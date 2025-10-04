@@ -1,4 +1,4 @@
-module github.com/xh-dev-go/security-group-updates
+module github.com/xh-dev-go/simple-aws-security-group-control
 
 go 1.24.6
 
