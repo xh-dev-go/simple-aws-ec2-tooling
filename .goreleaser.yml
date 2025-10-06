@@ -1,0 +1,43 @@
+# .goreleaser.yml
+project_name: ec2-manager
+
+before:
+  hooks:
+    # Ensure dependencies are tidy before building
+    - go mod tidy
+
+builds:
+  - id: ec2-manager
+    # The main Go file to build
+    main: ./main.go
+    # The name of the output binary
+    binary: ec2-manager
+    # Inject the version information using ldflags, just like you would manually.
+    # GoReleaser automatically provides the {{.Version}}, {{.Commit}}, and {{.Date}} variables.
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    # Build for multiple platforms
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    # The changelog will only include commits with these prefixes.
+    # You can customize this to your commit message style.
+    include:
+      - '^feat: '
+      - '^fix: '
