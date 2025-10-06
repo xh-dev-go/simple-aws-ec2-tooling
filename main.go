@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/xh-dev-go/simple-aws-security-group-control/operation"
+	"github.com/xh-dev-go/simple-aws-ec2-tooling/operation"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"

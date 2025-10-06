@@ -1,4 +1,4 @@
-module github.com/xh-dev-go/simple-aws-security-group-control
+module github.com/xh-dev-go/simple-aws-ec2-tooling
 
 go 1.24.6
 
