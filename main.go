@@ -18,6 +18,9 @@ var (
 	awsRegion string
 )
 
+// version is set at build time
+var version = "dev"
+
 var rootCmd = &cobra.Command{
 	Use:   "sg-manager",
 	Short: "A CLI tool to manage AWS Security Group rules.",
@@ -167,6 +170,9 @@ func init() {
 }
 
 func main() {
+	// Set the version on the root command. Cobra handles the --version flag automatically.
+	rootCmd.Version = version
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
