@@ -18,9 +18,12 @@ var (
 	awsRegion string
 )
 
+// version is set at build time
+var version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "sg-manager",
-	Short: "A CLI tool to manage AWS Security Group rules.",
+	Use:   "ec2-manager",
+	Short: "A CLI tool to manage AWS EC2 and Security Group resources.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// The 'awsRegion' variable is now bound to the --region flag by Cobra.
 		// If the flag is not set, we check the environment variable, then use a default.
@@ -37,6 +40,16 @@ var rootCmd = &cobra.Command{
 		}
 		client = ec2.NewFromConfig(cfg)
 	},
+}
+
+var sgCmd = &cobra.Command{
+	Use:   "sg",
+	Short: "Manage Security Group resources",
+}
+
+var ec2Cmd = &cobra.Command{
+	Use:   "ec2",
+	Short: "Manage EC2 instance resources",
 }
 
 var listCmd = &cobra.Command{
@@ -117,6 +130,59 @@ var purgeCmd = &cobra.Command{
 	},
 }
 
+var listInstancesCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Lists EC2 instances in the configured region.",
+	Run: func(cmd *cobra.Command, args []string) {
+		instances, err := operation.ListEC2Instances(client)
+		if err != nil {
+			log.Fatalf("failed to describe instances: %v", err)
+		}
+
+		fmt.Printf("EC2 Instances in region %s:\n", awsRegion)
+		for _, instance := range instances {
+			fmt.Printf("  - ID: %s, Name: %s, Type: %s, State: %s\n",
+				instance.ID, instance.Name, instance.Type, instance.State)
+		}
+	},
+}
+
+var findByNameCmd = &cobra.Command{
+	Use:   "find-by-name",
+	Short: "Finds EC2 instances by their 'Name' tag.",
+	Run: func(cmd *cobra.Command, args []string) {
+		name, _ := cmd.Flags().GetString("name")
+		instances, err := operation.FindEC2InstancesByName(client, name)
+		if err != nil {
+			log.Fatalf("failed to find instances by name: %v", err)
+		}
+
+		if len(instances) == 0 {
+			fmt.Printf("No instances found with the name '%s' in region %s.\n", name, awsRegion)
+			return
+		}
+
+		fmt.Printf("EC2 Instances named '%s' in region %s:\n", name, awsRegion)
+		for _, instance := range instances {
+			fmt.Printf("  - ID: %s, Name: %s, Type: %s, State: %s\n",
+				instance.ID, instance.Name, instance.Type, instance.State)
+		}
+	},
+}
+
+var getPublicIpCmd = &cobra.Command{
+	Use:   "get-public-ip",
+	Short: "Gets the public IP of an EC2 instance by its ID.",
+	Run: func(cmd *cobra.Command, args []string) {
+		instanceID, _ := cmd.Flags().GetString("instance-id")
+		ip, err := operation.GetEC2InstancePublicIP(client, instanceID)
+		if err != nil {
+			log.Fatalf("failed to get public IP: %v", err)
+		}
+		fmt.Println(ip)
+	},
+}
+
 func init() {
 	// Add a persistent flag for the region to the root command
 	rootCmd.PersistentFlags().StringVarP(&awsRegion, "region", "r", "", "The AWS region to use (overrides AWS_REGION environment variable)")
@@ -162,11 +228,26 @@ func init() {
 	revokeByIpPortCmd.MarkFlagRequired("port")
 	revokeByIpPortCmd.MarkFlagRequired("cidr")
 
+	// Flags for 'ec2 find-by-name'
+	findByNameCmd.Flags().StringP("name", "n", "", "The 'Name' tag of the instance to find")
+	findByNameCmd.MarkFlagRequired("name")
+
+	// Flags for 'ec2 get-public-ip'
+	getPublicIpCmd.Flags().StringP("instance-id", "i", "", "The ID of the instance")
+	getPublicIpCmd.MarkFlagRequired("instance-id")
+
+	// Assemble the command structure
+	ec2Cmd.AddCommand(listInstancesCmd, findByNameCmd, getPublicIpCmd)
+
 	revokeRootCmd.AddCommand(revokeByDescCmd, revokeByDescPrefixCmd, revokeByPortCmd, revokeByIpPortCmd)
-	rootCmd.AddCommand(listCmd, addCmd, revokeRootCmd, purgeCmd)
+	sgCmd.AddCommand(listCmd, addCmd, revokeRootCmd, purgeCmd)
+	rootCmd.AddCommand(sgCmd, ec2Cmd)
 }
 
 func main() {
+	// Set the version on the root command. Cobra handles the --version flag automatically.
+	rootCmd.Version = version
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
